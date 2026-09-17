@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Traduttore Al Bhed</title>
+<meta name="description" content="Traduci istantaneamente dall'Al Bhed all'italiano e viceversa, lettera per lettera.">
+<meta name="theme-color" content="#0D1417">
+<meta name="color-scheme" content="dark">
+
+<!-- iOS: aggiungi a Home -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Al Bhed">
+<meta name="mobile-web-app-capable" content="yes">
+
+<link id="faviconLink" rel="icon" type="image/png">
+<link id="appleIconLink" rel="apple-touch-icon">
+<link id="manifestLink" rel="manifest">
+
+<style>
+  :root{
+    --ink:#0D1417;
+    --panel:#161D22;
+    --panel-line: rgba(255,255,255,.06);
+    --brass:#C99A5B;
+    --teal:#4FB8AC;
+    --parchment:#EDE7D8;
+    --slate:#8792A0;
+    --danger:#D9695A;
+    --radius-lg:28px;
+    --radius-md:16px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{ margin:0; padding:0; }
+
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(79,184,172,.12), transparent 42%),
+      radial-gradient(circle at 92% 108%, rgba(201,154,91,.10), transparent 46%),
+      var(--ink);
+    color:var(--parchment);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    padding:48px 20px 40px;
+  }
+
+  .app{
+    max-width:560px;
+    margin:0 auto;
+    animation: riseIn .6s ease both;
+  }
+
+  @keyframes riseIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .hero{ text-align:center; margin-bottom:36px; }
+
+  .hero-icon{
+    font-size:2.8rem;
+    filter: drop-shadow(0 6px 14px rgba(201,154,91,.35));
+    margin-bottom:6px;
+  }
+
+  h1{
+    font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+    font-size:clamp(1.7rem, 5vw, 2.4rem);
+    font-weight:600;
+    letter-spacing:-.01em;
+    margin:0 0 10px;
+  }
+
+  .subtitle{
+    color:var(--slate);
+    font-size:1rem;
+    max-width:38ch;
+    margin:0 auto;
+    line-height:1.5;
+  }
+
+  .panel-stack{ position:relative; }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:var(--radius-lg);
+    padding:20px 20px 22px;
+    box-shadow: 0 24px 60px -28px rgba(0,0,0,.6);
+  }
+
+  .panel-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:10px;
+  }
+
+  .panel-head h2{
+    font-size:.95rem;
+    font-weight:600;
+    color:var(--brass);
+    letter-spacing:.02em;
+    margin:0;
+  }
+
+  .icon-btn{
+    width:32px; height:32px;
+    border-radius:50%;
+    border:none;
+    background:rgba(255,255,255,.05);
+    color:var(--slate);
+    font-size:.95rem;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    transition:background .2s, color .2s;
+  }
+  .icon-btn:hover{ background:rgba(255,255,255,.1); color:var(--parchment); }
+  .icon-btn.copied{ color:var(--teal); }
+  .icon-btn:disabled{ opacity:.35; pointer-events:none; }
+
+  .panel-actions{ display:flex; gap:6px; }
+
+  textarea{
+    width:100%;
+    min-height:120px;
+    resize:none;
+    overflow:hidden;
+    background:rgba(0,0,0,.18);
+    border:1px solid transparent;
+    border-radius:var(--radius-md);
+    padding:14px 16px;
+    color:var(--parchment);
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+    font-size:1.05rem;
+    line-height:1.55;
+    outline:none;
+    transition:border-color .2s;
+  }
+  textarea::placeholder{ color:var(--slate); opacity:.75; }
+  textarea:focus-visible{ border-color:var(--teal); }
+  #outputText{ background:rgba(79,184,172,.07); }
+
+  .swap-dial{
+    width:56px; height:56px;
+    margin:-20px auto;
+    position:relative; z-index:2;
+    border-radius:50%;
+    border:4px solid var(--ink);
+    background:linear-gradient(135deg,var(--brass),var(--teal));
+    color:var(--ink);
+    font-size:1.35rem;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    box-shadow:0 8px 22px -4px rgba(0,0,0,.5);
+  }
+  .swap-dial.spin{ animation: spinOnce .5s ease; }
+  @keyframes spinOnce{ from{ transform:rotate(0deg); } to{ transform:rotate(180deg); } }
+  .swap-dial:focus-visible{ outline:2px solid var(--teal); outline-offset:3px; }
+
+  .cipher-toggle-wrap{ text-align:center; margin-top:28px; }
+
+  .text-btn{
+    background:none; border:none;
+    color:var(--teal);
+    font-size:.95rem;
+    padding:8px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    transition:background .2s;
+  }
+  .text-btn:hover{ background:rgba(79,184,172,.09); }
+  .text-btn:focus-visible{ outline:2px solid var(--teal); outline-offset:2px; }
+  .text-btn:disabled{ opacity:.4; pointer-events:none; }
+
+  .cipher-grid{
+    margin-top:16px;
+    grid-template-columns:repeat(auto-fill, minmax(84px,1fr));
+    gap:8px;
+  }
+  .cipher-grid:not([hidden]){ display:grid; }
+
+  .cipher-cell{
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:10px;
+    padding:8px 6px;
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+    font-size:.85rem;
+  }
+  .cipher-cell .arrow{ color:var(--slate); font-size:.75rem; }
+
+  .foot-note{
+    text-align:center;
+    color:var(--slate);
+    font-size:.8rem;
+    margin-top:36px;
+  }
+
+  .saved-fab{
+    position:fixed;
+    top:max(16px, env(safe-area-inset-top));
+    right:max(16px, env(safe-area-inset-right));
+    width:46px; height:46px;
+    border-radius:50%;
+    border:1px solid var(--panel-line);
+    background:var(--panel);
+    color:var(--brass);
+    font-size:1.25rem;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 10px 30px -12px rgba(0,0,0,.6);
+    z-index:40;
+  }
+  .saved-fab:focus-visible{ outline:2px solid var(--teal); outline-offset:3px; }
+
+  .badge{
+    position:absolute;
+    top:-4px; right:-4px;
+    min-width:18px; height:18px;
+    padding:0 4px;
+    border-radius:9px;
+    background:var(--teal);
+    color:var(--ink);
+    font-size:.65rem;
+    font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .drawer-overlay{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,.55);
+    z-index:60;
+    opacity:0;
+    transition:opacity .25s ease;
+  }
+  .drawer-overlay.show{ opacity:1; }
+
+  .drawer{
+    position:fixed; top:0; right:0;
+    height:100%;
+    width:min(380px, 92vw);
+    background:var(--panel);
+    border-left:1px solid var(--panel-line);
+    box-shadow:-24px 0 60px -20px rgba(0,0,0,.6);
+    z-index:61;
+    padding:22px 18px;
+    padding-top:max(22px, env(safe-area-inset-top));
+    overflow-y:auto;
+    transform:translateX(100%);
+    transition:transform .3s ease;
+  }
+  .drawer.show{ transform:translateX(0); }
+
+  .drawer-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:18px;
+  }
+  .drawer-head h2{
+    font-family: Iowan Old Style, Palatino Linotype, Palatino, Georgia, serif;
+    font-size:1.15rem;
+    font-weight:600;
+    margin:0;
+  }
+
+  .drawer-toolbar{
+    display:flex;
+    gap:8px;
+    margin-bottom:16px;
+    padding-bottom:14px;
+    border-bottom:1px solid var(--panel-line);
+  }
+  .drawer-toolbar .text-btn{
+    flex:1;
+    background:rgba(255,255,255,.04);
+    font-size:.85rem;
+  }
+
+  .saved-empty{
+    color:var(--slate);
+    font-size:.9rem;
+    text-align:center;
+    margin-top:48px;
+  }
+
+  .saved-item{
+    background:rgba(0,0,0,.16);
+    border:1px solid var(--panel-line);
+    border-radius:14px;
+    padding:12px 14px;
+    margin-bottom:12px;
+  }
+  .saved-item-dir{
+    font-size:.72rem;
+    font-weight:600;
+    color:var(--brass);
+    margin-bottom:7px;
+  }
+  .saved-item-text{
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+    font-size:.88rem;
+    line-height:1.45;
+    word-break:break-word;
+  }
+  .saved-item-source{ color:var(--parchment); margin-bottom:4px; }
+  .saved-item-target{ color:var(--teal); margin-bottom:10px; }
+  .saved-item-actions{
+    display:flex; align-items:center; justify-content:flex-end; gap:6px;
+  }
+  .load-btn{ font-size:.85rem; padding:5px 12px; }
+  .delete-btn{ width:28px; height:28px; font-size:.85rem; }
+  .delete-btn:hover{ background:rgba(217,105,90,.12); color:var(--danger); }
+
+  @media (max-width:420px){
+    body{ padding:36px 14px 32px; }
+    h1{ font-size:1.55rem; }
+    .panel{ padding:16px 16px 18px; }
+    textarea{ font-size:1rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .app{ animation:none; }
+    .swap-dial.spin{ animation:none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header class="hero">
+    <div class="hero-icon" aria-hidden="true">🗝️</div>
+    <h1>Traduttore Al Bhed</h1>
+    <p class="subtitle">Decifra il linguaggio degli Al Bhed, lettera per lettera.</p>
+  </header>
+
+  <main class="panel-stack">
+    <section class="panel">
+      <div class="panel-head">
+        <h2 id="sourceLabel">Al Bhed</h2>
+        <button class="icon-btn" id="clearBtn" aria-label="Cancella il testo">✕</button>
+      </div>
+      <label class="sr-only" for="inputText">Testo da tradurre</label>
+      <textarea id="inputText" spellcheck="false" autocapitalize="off" autocorrect="off"></textarea>
+    </section>
+
+    <button id="swapBtn" class="swap-dial" aria-label="Inverti la direzione della traduzione" title="Inverti direzione">⇅</button>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h2 id="targetLabel">Italiano</h2>
+        <div class="panel-actions">
+          <button class="icon-btn" id="saveBtn" aria-label="Salva questa traduzione" title="Salva" disabled>💾</button>
+          <button class="icon-btn" id="copyBtn" aria-label="Copia il testo tradotto">⧉</button>
+        </div>
+      </div>
+      <label class="sr-only" for="outputText">Traduzione</label>
+      <textarea id="outputText" spellcheck="false" readonly aria-live="polite"></textarea>
+    </section>
+  </main>
+
+  <div class="cipher-toggle-wrap">
+    <button id="cipherToggle" class="text-btn" aria-expanded="false">Mostra il cifrario</button>
+    <div id="cipherGrid" class="cipher-grid" hidden></div>
+  </div>
+
+  <footer class="foot-note">
+    <p>Funziona interamente offline, sul tuo dispositivo.</p>
+  </footer>
+</div>
+
+<button id="savedToggle" class="saved-fab" aria-haspopup="true" aria-expanded="false" aria-controls="savedDrawer" title="Traduzioni salvate">
+  🗂️<span id="savedBadge" class="badge" hidden>0</span>
+</button>
+
+<div id="savedOverlay" class="drawer-overlay" hidden></div>
+<aside id="savedDrawer" class="drawer" hidden aria-label="Traduzioni salvate">
+  <div class="drawer-head">
+    <h2>Traduzioni salvate</h2>
+    <button id="savedClose" class="icon-btn" aria-label="Chiudi">✕</button>
+  </div>
+  <div class="drawer-toolbar">
+    <button id="exportBtn" class="text-btn" disabled>📤 Esporta</button>
+    <button id="importBtn" class="text-btn">📥 Importa</button>
+    <input type="file" id="importFile" accept="application/json,.json" hidden>
+  </div>
+  <div id="savedList" class="saved-list"></div>
+</aside>
+
+<script>
+(() => {
+  // --- Cifrario: Al Bhed -> Italiano (l'inverso viene derivato automaticamente) ---
+  const ALBHED_TO_IT = {A:'E',B:'P',C:'S',D:'T',E:'I',F:'W',G:'K',H:'N',I:'U',J:'V',K:'G',L:'C',M:'L',N:'R',O:'Y',P:'B',Q:'X',R:'H',S:'M',T:'D',U:'O',V:'F',W:'Z',X:'Q',Y:'A',Z:'J'};
+  const IT_TO_ALBHED = Object.fromEntries(Object.entries(ALBHED_TO_IT).map(([k, v]) => [v, k]));
+
+  let direction = 'a2i'; // 'a2i' = Al Bhed -> Italiano | 'i2a' = Italiano -> Al Bhed
+  const currentMap = () => (direction === 'a2i' ? ALBHED_TO_IT : IT_TO_ALBHED);
+
+  const translate = (text) => {
+    const map = currentMap();
+    return text.replace(/[A-Za-z]/g, (ch) => {
+      const isLower = ch !== ch.toUpperCase();
+      const out = map[ch.toUpperCase()] || ch.toUpperCase();
+      return isLower ? out.toLowerCase() : out;
+    });
+  };
+
+  const inputText = document.getElementById('inputText');
+  const outputText = document.getElementById('outputText');
+  const sourceLabel = document.getElementById('sourceLabel');
+  const targetLabel = document.getElementById('targetLabel');
+  const swapBtn = document.getElementById('swapBtn');
+  const clearBtn = document.getElementById('clearBtn');
+  const copyBtn = document.getElementById('copyBtn');
+  const cipherToggle = document.getElementById('cipherToggle');
+  const cipherGrid = document.getElementById('cipherGrid');
+  const saveBtn = document.getElementById('saveBtn');
+  const savedToggle = document.getElementById('savedToggle');
+  const savedBadge = document.getElementById('savedBadge');
+  const savedOverlay = document.getElementById('savedOverlay');
+  const savedDrawer = document.getElementById('savedDrawer');
+  const savedClose = document.getElementById('savedClose');
+  const savedList = document.getElementById('savedList');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+
+  const autoGrow = (el) => { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; };
+
+  const updateLabels = () => {
+    const [src, tgt] = direction === 'a2i' ? ['Al Bhed', 'Italiano'] : ['Italiano', 'Al Bhed'];
+    sourceLabel.textContent = src;
+    targetLabel.textContent = tgt;
+    inputText.placeholder = `Scrivi qui in ${src}...`;
+    outputText.placeholder = `La traduzione in ${tgt} apparirà qui...`;
+  };
+
+  inputText.addEventListener('input', () => {
+    outputText.value = translate(inputText.value);
+    autoGrow(inputText);
+    autoGrow(outputText);
+    saveBtn.disabled = !inputText.value.trim();
+  });
+
+  swapBtn.addEventListener('click', () => {
+    direction = direction === 'a2i' ? 'i2a' : 'a2i';
+    updateLabels();
+    inputText.value = outputText.value;
+    outputText.value = translate(inputText.value);
+    autoGrow(inputText);
+    autoGrow(outputText);
+    saveBtn.disabled = !inputText.value.trim();
+    swapBtn.classList.remove('spin');
+    void swapBtn.offsetWidth;
+    swapBtn.classList.add('spin');
+  });
+
+  clearBtn.addEventListener('click', () => {
+    inputText.value = '';
+    outputText.value = '';
+    autoGrow(inputText);
+    autoGrow(outputText);
+    saveBtn.disabled = true;
+    inputText.focus();
+  });
+
+  copyBtn.addEventListener('click', async () => {
+    if (!outputText.value) return;
+    try {
+      await navigator.clipboard.writeText(outputText.value);
+    } catch (e) {
+      outputText.removeAttribute('readonly');
+      outputText.select();
+      document.execCommand('copy');
+      outputText.setAttribute('readonly', '');
+    }
+    const original = copyBtn.textContent;
+    copyBtn.textContent = '✓';
+    copyBtn.classList.add('copied');
+    setTimeout(() => { copyBtn.textContent = original; copyBtn.classList.remove('copied'); }, 1200);
+  });
+
+  cipherToggle.addEventListener('click', () => {
+    const expanded = cipherToggle.getAttribute('aria-expanded') === 'true';
+    cipherToggle.setAttribute('aria-expanded', String(!expanded));
+    cipherToggle.textContent = expanded ? 'Mostra il cifrario' : 'Nascondi il cifrario';
+    cipherGrid.hidden = expanded;
+    if (!expanded && !cipherGrid.dataset.built) {
+      cipherGrid.innerHTML = Object.entries(ALBHED_TO_IT)
+        .sort()
+        .map(([a, i]) => `<div class="cipher-cell"><span>${a}</span><span class="arrow">→</span><span>${i}</span></div>`)
+        .join('');
+      cipherGrid.dataset.built = '1';
+    }
+  });
+
+  updateLabels();
+  autoGrow(inputText);
+  autoGrow(outputText);
+
+  // --- Traduzioni salvate (localStorage) ---
+  const STORAGE_KEY = 'albhed-saved-translations';
+
+  const escapeHtml = (str) => str.replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+
+  const loadSaved = () => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch (e) { return []; }
+  };
+
+  const persistSaved = (list) => localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+
+  const updateBadge = () => {
+    const count = loadSaved().length;
+    savedBadge.hidden = count === 0;
+    savedBadge.textContent = count > 99 ? '99+' : String(count);
+    exportBtn.disabled = count === 0;
+  };
+
+  const renderSavedList = () => {
+    const list = loadSaved();
+    if (!list.length) {
+      savedList.innerHTML = '<p class="saved-empty">Nessuna traduzione salvata.</p>';
+      return;
+    }
+    savedList.innerHTML = list.map((item) => {
+      const dirLabel = item.direction === 'a2i' ? 'Al Bhed → Italiano' : 'Italiano → Al Bhed';
+      return `
+        <div class="saved-item">
+          <div class="saved-item-dir">${dirLabel}</div>
+          <div class="saved-item-text saved-item-source">${escapeHtml(item.source)}</div>
+          <div class="saved-item-text saved-item-target">${escapeHtml(item.target)}</div>
+          <div class="saved-item-actions">
+            <button class="text-btn load-btn" data-action="load" data-id="${item.id}">Carica</button>
+            <button class="icon-btn delete-btn" data-action="delete" data-id="${item.id}" aria-label="Elimina questa traduzione">🗑</button>
+          </div>
+        </div>`;
+    }).join('');
+  };
+
+  const onKeyDown = (e) => { if (e.key === 'Escape') closeDrawer(); };
+
+  function openDrawer() {
+    savedOverlay.hidden = false;
+    savedDrawer.hidden = false;
+    requestAnimationFrame(() => {
+      savedOverlay.classList.add('show');
+      savedDrawer.classList.add('show');
+    });
+    savedToggle.setAttribute('aria-expanded', 'true');
+    renderSavedList();
+    document.addEventListener('keydown', onKeyDown);
+  }
+
+  function closeDrawer() {
+    savedOverlay.classList.remove('show');
+    savedDrawer.classList.remove('show');
+    savedToggle.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('keydown', onKeyDown);
+    setTimeout(() => {
+      savedOverlay.hidden = true;
+      savedDrawer.hidden = true;
+    }, 300);
+  }
+
+  savedToggle.addEventListener('click', () => {
+    const isOpen = savedToggle.getAttribute('aria-expanded') === 'true';
+    isOpen ? closeDrawer() : openDrawer();
+  });
+  savedOverlay.addEventListener('click', closeDrawer);
+  savedClose.addEventListener('click', closeDrawer);
+
+  saveBtn.addEventListener('click', () => {
+    const source = inputText.value.trim();
+    if (!source) return;
+    const list = loadSaved();
+    list.unshift({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      direction,
+      source: inputText.value,
+      target: outputText.value,
+      ts: Date.now()
+    });
+    persistSaved(list);
+    updateBadge();
+    const original = saveBtn.textContent;
+    saveBtn.textContent = '✓';
+    saveBtn.classList.add('copied');
+    setTimeout(() => { saveBtn.textContent = original; saveBtn.classList.remove('copied'); }, 1000);
+  });
+
+  savedList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const { id, action } = btn.dataset;
+    const list = loadSaved();
+    if (action === 'load') {
+      const item = list.find((i) => i.id === id);
+      if (!item) return;
+      direction = item.direction;
+      updateLabels();
+      inputText.value = item.source;
+      outputText.value = item.target;
+      autoGrow(inputText);
+      autoGrow(outputText);
+      saveBtn.disabled = !inputText.value.trim();
+      closeDrawer();
+      inputText.focus();
+    } else if (action === 'delete') {
+      persistSaved(list.filter((i) => i.id !== id));
+      updateBadge();
+      renderSavedList();
+    }
+  });
+
+  const flashButton = (btn, label, isError) => {
+    const original = btn.textContent;
+    btn.textContent = label;
+    btn.style.color = isError ? 'var(--danger)' : 'var(--teal)';
+    setTimeout(() => { btn.textContent = original; btn.style.color = ''; }, 1600);
+  };
+
+  exportBtn.addEventListener('click', () => {
+    const list = loadSaved();
+    if (!list.length) return;
+    const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `albhed-traduzioni-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  importBtn.addEventListener('click', () => importFile.click());
+
+  importFile.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = ''; // permette di reimportare lo stesso file in seguito
+    if (!file) return;
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!Array.isArray(parsed)) throw new Error('formato non valido');
+      const existing = loadSaved();
+      const existingIds = new Set(existing.map((i) => i.id));
+      const merged = existing.slice();
+      let added = 0;
+      parsed.forEach((raw) => {
+        if (!raw || typeof raw.source !== 'string' || typeof raw.target !== 'string') return;
+        let id = typeof raw.id === 'string' ? raw.id : '';
+        if (!id || existingIds.has(id)) {
+          id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+        }
+        existingIds.add(id);
+        merged.push({
+          id,
+          direction: raw.direction === 'i2a' ? 'i2a' : 'a2i',
+          source: raw.source,
+          target: raw.target,
+          ts: typeof raw.ts === 'number' ? raw.ts : Date.now()
+        });
+        added++;
+      });
+      merged.sort((a, b) => b.ts - a.ts);
+      persistSaved(merged);
+      updateBadge();
+      renderSavedList();
+      flashButton(importBtn, `✓ ${added} importate`, false);
+    } catch (err) {
+      flashButton(importBtn, '✕ File non valido', true);
+    }
+  });
+
+  updateBadge();
+
+  // --- Icona app generata via canvas (favicon, home screen iOS, manifest) ---
+  const roundRect = (ctx, x, y, w, h, r) => {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  };
+
+  const makeIcon = (size) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = size; canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    const r = size * 0.22;
+    const grad = ctx.createLinearGradient(0, 0, size, size);
+    grad.addColorStop(0, '#1B242A');
+    grad.addColorStop(1, '#0D1417');
+    ctx.fillStyle = grad;
+    roundRect(ctx, 0, 0, size, size, r);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(201,154,91,0.55)';
+    ctx.lineWidth = size * 0.022;
+    roundRect(ctx, size * 0.045, size * 0.045, size * 0.91, size * 0.91, r * 0.85);
+    ctx.stroke();
+    ctx.font = `${size * 0.56}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🗝️', size / 2, size * 0.56);
+    return canvas.toDataURL('image/png');
+  };
+
+  const icon192 = makeIcon(192);
+  const icon512 = makeIcon(512);
+  const icon180 = makeIcon(180);
+
+  document.getElementById('faviconLink').href = icon192;
+  document.getElementById('appleIconLink').href = icon180;
+
+  const manifest = {
+    name: 'Traduttore Al Bhed',
+    short_name: 'Al Bhed',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#0D1417',
+    theme_color: '#0D1417',
+    icons: [
+      { src: icon192, sizes: '192x192', type: 'image/png' },
+      { src: icon512, sizes: '512x512', type: 'image/png' }
+    ]
+  };
+  const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
+  document.getElementById('manifestLink').href = URL.createObjectURL(manifestBlob);
+
+  // --- Service worker minimale, solo per abilitare l'installabilità della PWA ---
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    const swSrc = `self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>self.clients.claim());`;
+    const swBlob = new Blob([swSrc], { type: 'text/javascript' });
+    navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(() => {});
+  }
+})();
+</script>
+
+<style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}</style>
+</body>
+</html>
