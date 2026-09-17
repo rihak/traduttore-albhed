@@ -45,7 +45,7 @@
     color:var(--parchment);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
     -webkit-font-smoothing:antialiased;
-    padding:48px 20px 40px;
+    padding: max(48px, calc(env(safe-area-inset-top) + 14px)) 20px 40px;
   }
 
   .app{
@@ -317,7 +317,7 @@
   .delete-btn:hover{ background:rgba(217,105,90,.12); color:var(--danger); }
 
   @media (max-width:420px){
-    body{ padding:36px 14px 32px; }
+    body{ padding: max(36px, calc(env(safe-area-inset-top) + 14px)) 14px 32px; }
     h1{ font-size:1.55rem; }
     .panel{ padding:16px 16px 18px; }
     textarea{ font-size:1rem; }
@@ -697,20 +697,25 @@
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
     const r = size * 0.22;
+    // Sfondo chiaro: l'emoji 🗝️ è a tinte scure, su sfondo scuro sparirebbe (icona home iOS)
     const grad = ctx.createLinearGradient(0, 0, size, size);
-    grad.addColorStop(0, '#1B242A');
-    grad.addColorStop(1, '#0D1417');
+    grad.addColorStop(0, '#F6EFDF');
+    grad.addColorStop(1, '#E9DDC2');
     ctx.fillStyle = grad;
     roundRect(ctx, 0, 0, size, size, r);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(201,154,91,0.55)';
+    ctx.strokeStyle = 'rgba(160,116,58,0.55)';
     ctx.lineWidth = size * 0.022;
     roundRect(ctx, size * 0.045, size * 0.045, size * 0.91, size * 0.91, r * 0.85);
     ctx.stroke();
-    ctx.font = `${size * 0.56}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;
+    // Ombra morbida sotto il glifo per dargli un po' di profondità
+    ctx.shadowColor = 'rgba(0,0,0,0.18)';
+    ctx.shadowBlur = size * 0.02;
+    ctx.shadowOffsetY = size * 0.012;
+    ctx.font = `${size * 0.42}px "Apple Color Emoji","Segoe UI Emoji",sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('🗝️', size / 2, size * 0.56);
+    ctx.fillText('🗝️', size / 2, size * 0.53);
     return canvas.toDataURL('image/png');
   };
 
