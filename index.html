@@ -13,13 +13,22 @@
   blocco script con tutta la logica in una IIFE, così nulla finisce su window.
   Nessun build step, nessuna CDN: si apre anche con doppio click da filesystem.
 
+  ESCAPE
+  Per riprodurre l'effetto dei dizionari di gioco (alcune parole già decifrate),
+  parti di testo possono essere escluse dalla traduzione:
+    *x      protegge il carattere successivo
+    #xyz#   protegge un blocco
+    **      asterisco letterale        *#   cancelletto letterale
+  I marcatori non compaiono mai nell'output e sopravvivono allo swap.
+
   MODELLO DATI (localStorage, chiave 'albhed-saved-translations')
   Array di voci, ordinato per ts decrescente (più recenti in cima):
     { id: string, direction: 'a2i'|'i2a', source: string, target: string, ts: number }
   - id: identificatore opaco, usato per delete e per deduplicare in import
   - direction: verso della traduzione al momento del salvataggio, serve a
     ripristinare l'orientamento giusto quando si ricarica una voce
-  - source/target: testo così come digitato/tradotto (non trimmato, per fedeltà)
+  - source/target: testo così come digitato/tradotto (non trimmato, per fedeltà).
+    source conserva i marcatori di escape, target è già ripulito
   - ts: epoch ms, unica fonte dell'ordinamento
 
   ICONE
@@ -231,8 +240,9 @@
   @keyframes spinOnce{ from{ transform:rotate(0deg); } to{ transform:rotate(180deg); } }
   .swap-dial:focus-visible{ outline:2px solid var(--teal); outline-offset:3px; }
 
-  /* ---------- Cifrario ---------- */
-  .cipher-toggle-wrap{ text-align:center; margin-top:28px; }
+  /* ---------- Pannelli richiudibili (cifrario, guida escape) ---------- */
+  .aux{ text-align:center; margin-top:28px; }
+  .aux-toggles{ display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
 
   /* display:grid solo su :not([hidden]): a parità di specificità una regola
      dell'autore batte [hidden]{display:none} dell'user-agent, quindi un
@@ -254,6 +264,38 @@
     font-size:.85rem;
   }
   .cipher-cell .arrow{ color:var(--slate); font-size:.75rem; }
+
+  /* Nessun display esplicito qui: il default block del div lascia funzionare
+     l'attributo hidden, senza bisogno del trucco :not([hidden]) usato sopra */
+  .help-panel{
+    margin-top:16px;
+    text-align:left;
+    background:var(--panel);
+    border:1px solid var(--panel-line);
+    border-radius:var(--radius-md);
+    padding:16px 18px;
+    font-size:.9rem;
+    line-height:1.65;
+    color:var(--slate);
+  }
+  .help-panel p{ margin:0 0 12px; }
+  .help-panel p:last-child{ margin-bottom:0; }
+  .help-panel strong{ color:var(--parchment); font-weight:600; }
+  .help-panel code{
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+    background:rgba(0,0,0,.3);
+    color:var(--brass);
+    padding:2px 7px;
+    border-radius:5px;
+    font-size:.9em;
+  }
+  /* Esempi: monospace e verderame, gli stessi codici visivi del riquadro di output */
+  .help-panel .ex{
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, monospace;
+    color:var(--teal);
+    font-size:.9em;
+  }
+  .help-panel em{ color:var(--parchment); font-style:normal; font-weight:600; }
 
   .foot-note{
     text-align:center;
@@ -444,10 +486,23 @@
     </section>
   </main>
 
-  <!-- Tabella del cifrario, costruita al primo click e poi solo mostrata/nascosta -->
-  <div class="cipher-toggle-wrap">
-    <button id="cipherToggle" class="text-btn" aria-expanded="false">Mostra il cifrario</button>
+  <!-- Pannelli richiudibili: tabella del cifrario e guida agli escape.
+       Entrambi chiusi di default per tenere la vista iniziale su una schermata. -->
+  <div class="aux">
+    <div class="aux-toggles">
+      <button id="cipherToggle" class="text-btn" aria-expanded="false" aria-controls="cipherGrid">Mostra il cifrario</button>
+      <button id="helpToggle" class="text-btn" aria-expanded="false" aria-controls="helpPanel">Escludere lettere</button>
+    </div>
     <div id="cipherGrid" class="cipher-grid" hidden></div>
+    <div id="helpPanel" class="help-panel" hidden>
+      <p>Nel gioco i dizionari decifrano solo alcune parole: il resto resta in Al Bhed. Per riprodurre l&rsquo;effetto puoi escludere pezzi di testo dalla traduzione.</p>
+      <p><code>*</code> &nbsp;protegge il <strong>carattere subito dopo</strong>.<br>
+         <span class="ex">F*ryd &rarr; Wrat</span> &mdash; la <em>r</em> resta com&rsquo;era.</p>
+      <p><code>#&hellip;#</code> &nbsp;protegge un <strong>blocco intero</strong>.<br>
+         <span class="ex">#Fry#d &rarr; Fryt</span> &mdash; solo la <em>d</em> viene tradotta.</p>
+      <p>Per scrivere i simboli stessi: <code>**</code> d&agrave; un asterisco, <code>*#</code> un cancelletto.</p>
+      <p>I marcatori non compaiono mai nel riquadro tradotto e restano al loro posto anche invertendo la direzione.</p>
+    </div>
   </div>
 
   <footer class="foot-note">
@@ -504,16 +559,98 @@
 
   const currentMap = () => (direction === 'a2i' ? ALBHED_TO_IT : IT_TO_ALBHED);
 
-  /* Traduce preservando maiuscole/minuscole e lasciando intatto tutto ciò che
-     non è A-Z: spazi, punteggiatura, cifre e lettere accentate (à, è, ù…).
-     Le accentate passano invariate di proposito: il cifrario del gioco copre
-     solo l'alfabeto latino base, non esiste una controparte cifrata per "è". */
-  const translate = (text) => text.replace(/[A-Za-z]/g, (ch) => {
+  /* Sostituzione lettera per lettera, senza alcuna nozione di escape.
+     Preserva maiuscole/minuscole e lascia intatto tutto ciò che non è A-Z:
+     spazi, punteggiatura, cifre e lettere accentate (à, è, ù…). Le accentate
+     passano invariate di proposito: il cifrario del gioco copre solo
+     l'alfabeto latino base, non esiste una controparte cifrata per "è". */
+  const cipherLetters = (text) => text.replace(/[A-Za-z]/g, (ch) => {
     const upper = ch.toUpperCase();
     const isLower = ch !== upper;
     const out = currentMap()[upper];
     return isLower ? out.toLowerCase() : out;
   });
+
+  // ============================================================
+  // 1b. ESCAPE: ESCLUDERE PARTI DI TESTO DALLA TRADUZIONE
+  // ============================================================
+  /* Serve a riprodurre la situazione di gioco in cui alcuni vocaboli sono già
+     stati decifrati dai dizionari: quelle lettere vanno riportate tali e quali
+     invece di essere ritradotte.
+
+     Sintassi:
+       *x      il singolo carattere dopo l'asterisco resta invariato
+       #xyz#   tutto il blocco fra cancelletti resta invariato
+       **      asterisco letterale     *#  cancelletto letterale
+
+     I marcatori non compaiono mai nel riquadro tradotto. */
+  const ESC_CHAR  = '*';   // escape del carattere successivo
+  const ESC_BLOCK = '#';   // delimitatore (apre e chiude) di un blocco escluso
+
+  /* Scompone il testo in segmenti, ognuno con:
+       literal : true se va riportato invariato, false se va cifrato
+       text    : contenuto senza marcatori (quello che finisce nell'output)
+       raw     : contenuto con i marcatori (serve allo swap per non perderli)
+     Nota: i segmenti non-literal non possono contenere ESC_CHAR né ESC_BLOCK,
+     perché ogni occorrenza apre un segmento literal. È questa proprietà a
+     rendere il testo prodotto da renderMarked() ri-analizzabile senza ambiguità. */
+  const parseSegments = (text) => {
+    const segments = [];
+    let buffer = '';
+    const flushPlain = () => {
+      if (buffer) { segments.push({ literal: false, text: buffer, raw: buffer }); buffer = ''; }
+    };
+
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+
+      if (ch === ESC_CHAR) {
+        flushPlain();
+        const next = text[i + 1];
+        if (next === undefined) {
+          // Marcatore in coda, ancora senza bersaglio (tipico mentre si digita):
+          // invisibile nell'output, ma conservato in raw per non perderlo allo swap
+          segments.push({ literal: true, text: '', raw: ESC_CHAR });
+          break;
+        }
+        segments.push({ literal: true, text: next, raw: ESC_CHAR + next });
+        i++; // consuma anche il carattere protetto
+        continue;
+      }
+
+      if (ch === ESC_BLOCK) {
+        flushPlain();
+        const close = text.indexOf(ESC_BLOCK, i + 1);
+        if (close === -1) {
+          // Blocco non chiuso: si protegge tutto il resto. Scelta permissiva,
+          // così l'effetto è visibile già mentre si scrive, prima di chiudere
+          segments.push({ literal: true, text: text.slice(i + 1), raw: text.slice(i) });
+          break;
+        }
+        const content = text.slice(i + 1, close);
+        segments.push({ literal: true, text: content, raw: ESC_BLOCK + content + ESC_BLOCK });
+        i = close; // salta fino al delimitatore di chiusura incluso
+        continue;
+      }
+
+      buffer += ch;
+    }
+
+    flushPlain();
+    return segments;
+  };
+
+  // Testo da mostrare nel riquadro tradotto: marcatori rimossi
+  const renderTranslation = (text) => parseSegments(text)
+    .map((s) => (s.literal ? s.text : cipherLetters(s.text)))
+    .join('');
+
+  /* Testo tradotto ma con i marcatori al loro posto. Usato solo dallo swap:
+     promuovendo nell'input la versione "pulita" si perderebbero le esclusioni
+     e premendo due volte lo swap non si tornerebbe al testo di partenza. */
+  const renderMarked = (text) => parseSegments(text)
+    .map((s) => (s.literal ? s.raw : cipherLetters(s.text)))
+    .join('');
 
   // ============================================================
   // 2. RIFERIMENTI AL DOM
@@ -529,6 +666,8 @@
   const saveBtn     = document.getElementById('saveBtn');
   const cipherToggle = document.getElementById('cipherToggle');
   const cipherGrid   = document.getElementById('cipherGrid');
+  const helpToggle   = document.getElementById('helpToggle');
+  const helpPanel    = document.getElementById('helpPanel');
   // Archivio
   const savedToggle  = document.getElementById('savedToggle');
   const savedBadge   = document.getElementById('savedBadge');
@@ -598,7 +737,7 @@
      riadatta le altezze e sincronizza lo stato del pulsante Salva.
      Chiamare sempre questa invece di toccare outputText a mano. */
   const refreshTranslation = () => {
-    outputText.value = translate(inputText.value);
+    outputText.value = renderTranslation(inputText.value);
     autoGrow(inputText);
     autoGrow(outputText);
     saveBtn.disabled = !inputText.value.trim();
@@ -611,11 +750,16 @@
   inputText.addEventListener('input', refreshTranslation);
 
   /* Swap: inverte il verso e promuove l'output a nuovo input, così premendolo
-     due volte si torna esattamente al punto di partenza. */
+     due volte si torna esattamente al punto di partenza.
+     Si promuove renderMarked() e non outputText.value: quest'ultimo è privo dei
+     marcatori di escape, quindi le esclusioni andrebbero perse e al ritorno le
+     lettere protette verrebbero tradotte. La traduzione va calcolata prima di
+     invertire direction, perché usa il cifrario del verso corrente. */
   swapBtn.addEventListener('click', () => {
+    const promosso = renderMarked(inputText.value);
     direction = direction === 'a2i' ? 'i2a' : 'a2i';
     updateLabels();
-    inputText.value = outputText.value;
+    inputText.value = promosso;
     refreshTranslation();
     // remove + reflow + add: ri-innesca l'animazione anche a click ripetuti
     swapBtn.classList.remove('spin');
@@ -647,24 +791,35 @@
   });
 
   // ============================================================
-  // 5. TABELLA DEL CIFRARIO
+  // 5. PANNELLI RICHIUDIBILI (cifrario, guida escape)
   // ============================================================
 
-  cipherToggle.addEventListener('click', () => {
-    const wasExpanded = cipherToggle.getAttribute('aria-expanded') === 'true';
-    cipherToggle.setAttribute('aria-expanded', String(!wasExpanded));
-    cipherToggle.textContent = wasExpanded ? 'Mostra il cifrario' : 'Nascondi il cifrario';
-    cipherGrid.hidden = wasExpanded;
+  /* Collega un pulsante al pannello che apre/chiude, tenendo allineati
+     aria-expanded, l'attributo hidden e l'etichetta del pulsante.
+     onFirstOpen serve per i contenuti da costruire in modo lazy. */
+  const bindToggle = (btn, panel, labelClosed, labelOpen, onFirstOpen) => {
+    btn.addEventListener('click', () => {
+      const wasExpanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!wasExpanded));
+      btn.textContent = wasExpanded ? labelClosed : labelOpen;
+      panel.hidden = wasExpanded;
+      if (!wasExpanded && onFirstOpen && !panel.dataset.built) {
+        onFirstOpen();
+        panel.dataset.built = '1';
+      }
+    });
+  };
 
-    // Costruzione lazy e una volta sola: la tabella è statica
-    if (!wasExpanded && !cipherGrid.dataset.built) {
-      cipherGrid.innerHTML = Object.entries(ALBHED_TO_IT)
-        .map(([albhed, italiano]) =>
-          `<div class="cipher-cell"><span>${albhed}</span><span class="arrow">&rarr;</span><span>${italiano}</span></div>`)
-        .join('');
-      cipherGrid.dataset.built = '1';
-    }
+  // Tabella del cifrario: costruita al primo click e poi solo mostrata/nascosta
+  bindToggle(cipherToggle, cipherGrid, 'Mostra il cifrario', 'Nascondi il cifrario', () => {
+    cipherGrid.innerHTML = Object.entries(ALBHED_TO_IT)
+      .map(([albhed, italiano]) =>
+        `<div class="cipher-cell"><span>${albhed}</span><span class="arrow">&rarr;</span><span>${italiano}</span></div>`)
+      .join('');
   });
+
+  // Guida agli escape: contenuto statico già nel markup, nessuna costruzione
+  bindToggle(helpToggle, helpPanel, 'Escludere lettere', 'Nascondi la guida');
 
   // ============================================================
   // 6. ARCHIVIO: PERSISTENZA
